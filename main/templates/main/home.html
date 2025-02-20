@@ -1,0 +1,99 @@
+{% extends "main/base.html" %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-6">
+        <h3>Emergency Contacts</h3>
+        <div class="list-group">
+            {% for contact in contacts %}
+            <div class="list-group-item">
+                <strong>{{ contact.name }}</strong>: {{ contact.number }}
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    
+    <div class="col-md-6">
+        <h3>Police Stations</h3>
+        <div class="list-group">
+            {% for station in stations %}
+            <a href="{{ station.map_link }}" class="list-group-item list-group-item-action">
+                <h5>{{ station.name }}</h5>
+                <p class="mb-1">{{ station.address }}</p>
+                <small>Phone: {{ station.phone }}</small>
+            </a>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+##
+{% if user.is_authenticated and user.is_verified %}
+<div class="sos-container">
+    <div class="sos-container">
+        <button class="btn btn-danger sos-button" id="sosButton">
+            <i class="bi bi-exclamation-triangle"></i> SOS
+        </button>
+    </div>
+    <script>
+        document.getElementById('sosButton').addEventListener('click', function() {
+            if (confirm('Are you sure you want to trigger emergency alert?')) {
+                if (navigator.geolocation) {
+                    navigator.geolocation.getCurrentPosition(
+                        function(position) {
+                            const formData = new FormData();
+                            formData.append('lat', position.coords.latitude);
+                            formData.append('lng', position.coords.longitude);
+                            
+                            fetch('/sos/', {
+                                method: 'POST',
+                                headers: {
+                                    'X-CSRFToken': '{{ csrf_token }}',
+                                },
+                                body: formData
+                            })
+                            .then(response => response.json())
+                            .then(data => {
+                                if (data.status === 'success') {
+                                    alert('Emergency alert sent!\nLocation: ' + data.location);
+                                } else {
+                                    alert('Error: ' + data.message);
+                                }
+                            });
+                        },
+                        function(error) {
+                            alert('Error getting location: ' + error.message);
+                        }
+                    );
+                } else {
+                    alert('Geolocation is not supported by this browser.');
+                }
+            }
+        });
+        </script>
+        
+        <style>
+        .sos-button {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            padding: 1.5rem 2.5rem;
+            font-size: 1.5rem;
+            border-radius: 50px;
+            box-shadow: 0 0 15px rgba(255, 0, 0, 0.5);
+            animation: pulse 1.5s infinite;
+        }
+        
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); }
+        }
+        </style>
+</div>
+{% elif user.is_authenticated %}
+<div class="alert alert-warning mt-3">
+    Your account is pending verification. Please contact admin.
+</div>
+{% endif %}
+
+{% endblock %}
